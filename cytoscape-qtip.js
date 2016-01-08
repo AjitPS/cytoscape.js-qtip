@@ -1,5 +1,150 @@
 ;(function( $, $$ ){ 'use strict';
 
+  var isObject = function(o){
+    return o != null && typeof o === 'object';
+  };
+
+  var isFunction = function(o){
+    return o != null && typeof o === 'function';
+  };
+
+  var isNumber = function(o){
+    return o != null && typeof o === 'number';
+  };
+
+  var isString = function(o){
+    return o != null && typeof o === 'string';
+  };
+
+  var wrap = function(obj, target) {
+    if( isFunction(obj) ) {
+      return function(event, api){
+        return obj.apply( target, [event, api] );
+      };
+    } else {
+      return obj;
+    }
+  };
+
+  var throttle = function(func, wait, options) {
+    var leading = true,
+        trailing = true;
+
+    if (options === false) {
+      leading = false;
+    } else if (isObject(options)) {
+      leading = 'leading' in options ? options.leading : leading;
+      trailing = 'trailing' in options ? options.trailing : trailing;
+    }
+    options = options || {};
+    options.leading = leading;
+    options.maxWait = wait;
+    options.trailing = trailing;
+
+    return debounce(func, wait, options);
+  };
+
+  var debounce = function(func, wait, options) { // ported lodash debounce function
+    var args,
+        maxTimeoutId,
+        result,
+        stamp,
+        thisArg,
+        timeoutId,
+        trailingCall,
+        lastCalled = 0,
+        maxWait = false,
+        trailing = true;
+
+    if (!isFunction(func)) {
+      return;
+    }
+    wait = Math.max(0, wait) || 0;
+    if (options === true) {
+      var leading = true;
+      trailing = false;
+    } else if (isObject(options)) {
+      leading = options.leading;
+      maxWait = 'maxWait' in options && (Math.max(wait, options.maxWait) || 0);
+      trailing = 'trailing' in options ? options.trailing : trailing;
+    }
+    var delayed = function() {
+      var remaining = wait - (Date.now() - stamp);
+      if (remaining <= 0) {
+        if (maxTimeoutId) {
+          clearTimeout(maxTimeoutId);
+        }
+        var isCalled = trailingCall;
+        maxTimeoutId = timeoutId = trailingCall = undefined;
+        if (isCalled) {
+          lastCalled = Date.now();
+          result = func.apply(thisArg, args);
+          if (!timeoutId && !maxTimeoutId) {
+            args = thisArg = null;
+          }
+        }
+      } else {
+        timeoutId = setTimeout(delayed, remaining);
+      }
+    };
+
+    var maxDelayed = function() {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      maxTimeoutId = timeoutId = trailingCall = undefined;
+      if (trailing || (maxWait !== wait)) {
+        lastCalled = Date.now();
+        result = func.apply(thisArg, args);
+        if (!timeoutId && !maxTimeoutId) {
+          args = thisArg = null;
+        }
+      }
+    };
+
+    return function() {
+      args = arguments;
+      stamp = Date.now();
+      thisArg = this;
+      trailingCall = trailing && (timeoutId || !leading);
+
+      if (maxWait === false) {
+        var leadingCall = leading && !timeoutId;
+      } else {
+        if (!maxTimeoutId && !leading) {
+          lastCalled = stamp;
+        }
+        var remaining = maxWait - (stamp - lastCalled),
+            isCalled = remaining <= 0;
+
+        if (isCalled) {
+          if (maxTimeoutId) {
+            maxTimeoutId = clearTimeout(maxTimeoutId);
+          }
+          lastCalled = stamp;
+          result = func.apply(thisArg, args);
+        }
+        else if (!maxTimeoutId) {
+          maxTimeoutId = setTimeout(maxDelayed, remaining);
+        }
+      }
+      if (isCalled && timeoutId) {
+        timeoutId = clearTimeout(timeoutId);
+      }
+      else if (!timeoutId && wait !== maxWait) {
+        timeoutId = setTimeout(delayed, wait);
+      }
+      if (leadingCall) {
+        isCalled = true;
+        result = func.apply(thisArg, args);
+      }
+      if (isCalled && !timeoutId && !maxTimeoutId) {
+        args = thisArg = null;
+      }
+      return result;
+    };
+  };
+
   function register( $$, $ ){
 
     // use a single dummy dom ele as target for every qtip
@@ -53,17 +198,13 @@
       // so multiple qtips can exist at once (only works on recent qtip2 versions)
       opts.overwrite = false;
 
-      var content;
       if( opts.content ){
-        if( $$.is.fn(opts.content) ){
-          content = opts.content;
-        } else if( opts.content.text && $$.is.fn(opts.content.text) ){
-          content = opts.content.text;
-        }
-
-        if( content ){
-          opts.content = function(event, api){
-            return content.apply( target, [event, api] );
+        if ( isFunction(opts.content) || isString(opts.content) ){
+          opts.content = wrap( opts.content, target );
+        } else {
+          opts.content = {
+            text: wrap( opts.content.text, target ),
+            title: wrap( opts.content.title, target )
           };
         }
       }
@@ -115,11 +256,11 @@
               pos.x += w/2;
             }
 
-            if( $$.is.number(adjNums.x) ){
+            if( isNumber(adjNums.x) ){
               pos.x += adjNums.x;
             }
 
-            if( $$.is.number(adjNums.y) ){
+            if( isNumber(adjNums.y) ){
               pos.y += adjNums.y;
             }
           }
@@ -140,13 +281,13 @@
         } );
 
         if( opts.hide.cyViewport ){
-          cy.on('viewport', $$.util.debounce(function(){
+          cy.on('viewport', debounce(function(){
             qtipApi.hide();
           }, viewportDebounceRate, { leading: true }) );
         }
 
         if( opts.position.adjust.cyViewport ){
-          cy.on('pan zoom', $$.util.debounce(function(e){
+          cy.on('pan zoom', debounce(function(e){
             updatePosition(e);
 
             qtipApi.reposition();
@@ -200,7 +341,7 @@
       } );
 
       if( opts.hide.cyViewport ){
-        cy.on('viewport', $$.util.debounce(function(){
+        cy.on('viewport', debounce(function(){
           qtipApi.hide();
         }, viewportDebounceRate, { leading: true }) );
       }
@@ -225,4 +366,7 @@
     register( $$, $ );
   }
 
-})( jQuery, cytoscape );
+})(
+  typeof jQuery !== 'undefined' ? jQuery : null,
+  typeof cytoscape !== 'undefined' ? cytoscape : null
+);
