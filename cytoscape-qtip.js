@@ -1,3 +1,25 @@
+/*!
+Copyright (c) The Cytoscape Consortium
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the “Software”), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 ;(function( $, $$ ){ 'use strict';
 
   var isObject = function(o){
@@ -14,6 +36,10 @@
 
   var isString = function(o){
     return o != null && typeof o === 'string';
+  };
+
+  var isUndef = function(o){
+    return o === undefined;
   };
 
   var wrap = function(obj, target) {
@@ -176,14 +202,14 @@
       adjust.method = adjust.method || 'flip';
       adjust.mouse = false;
 
-      if( adjust.cyAdjustToEleBB === undefined ){
+      if( isUndef(adjust.cyAdjustToEleBB) ){
         adjust.cyAdjustToEleBB = true;
       }
 
       // default show event
       opts.show = opts.show || {};
 
-      if( !opts.show.event ){
+      if( isUndef(opts.show.event) ){
         opts.show.event = 'tap';
       }
 
@@ -191,7 +217,7 @@
       opts.hide = opts.hide || {};
       opts.hide.cyViewport = opts.hide.cyViewport === undefined ? true : opts.hide.cyViewport;
 
-      if( !opts.hide.event ){
+      if( isUndef(opts.hide.event) ){
         opts.hide.event = 'unfocus';
       }
 
